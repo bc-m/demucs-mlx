@@ -2,9 +2,9 @@
 """Separate music sources with HTDemucs on Apple Silicon (MLX).
 
 Usage:
-    python separate.py song.mp3
-    python separate.py song.wav --stems vocals drums
-    python separate.py song.mp3 -o output_dir/
+    demucs-mlx song.mp3
+    demucs-mlx song.wav --stems vocals drums
+    demucs-mlx song.mp3 -o output_dir/
 """
 
 import argparse
@@ -14,24 +14,54 @@ import time
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Separate music sources with HTDemucs (MLX)")
-    parser.add_argument("input", help="Input audio file (WAV, MP3, FLAC, etc.)")
-    parser.add_argument("-n", "--name", default="htdemucs",
-                        help="Model name (default: htdemucs)")
-    parser.add_argument("-o", "--output", default=None,
-                        help="Output directory (default: ./separated/<model>)")
-    parser.add_argument("--stems", nargs="+", default=None,
-                        help="Which stems to save (default: all)")
-    parser.add_argument("--shifts", type=int, default=1,
-                        help="Number of random shifts (default: 1)")
-    parser.add_argument("--overlap", type=float, default=0.25,
-                        help="Overlap for chunking (default: 0.25)")
-    parser.add_argument("--no-split", action="store_true",
-                        help="Don't split into chunks (more memory)")
-    parser.add_argument("--mp3", action="store_true",
-                        help="Save as MP3 instead of WAV")
-    parser.add_argument("--float32", action="store_true",
-                        help="Save as float32 WAV (default: int16)")
+        prog="demucs-mlx",
+        description="Separate a song into stems (drums, bass, other, vocals) "
+                    "using HTDemucs on Apple Silicon with MLX.",
+        epilog="Examples:\n"
+               "  demucs-mlx song.mp3\n"
+               "  demucs-mlx song.mp3 --stems vocals\n"
+               "  demucs-mlx song.mp3 --stems vocals drums -o my_stems/\n"
+               "  demucs-mlx song.mp3 --shifts 3 --float32\n"
+               "  demucs-mlx song.mp3 -n htdemucs_ft\n",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+
+    parser.add_argument("input",
+                        help="input audio file (WAV, MP3, FLAC, OGG, etc.)")
+
+    model_group = parser.add_argument_group("model")
+    model_group.add_argument("-n", "--name", default="htdemucs",
+                             metavar="NAME",
+                             help="model name: htdemucs, htdemucs_ft, "
+                                  "htdemucs_6s (default: htdemucs)")
+
+    output_group = parser.add_argument_group("output")
+    output_group.add_argument("-o", "--output", default=None,
+                              metavar="DIR",
+                              help="output directory "
+                                   "(default: ./separated/<model>/<song>/)")
+    output_group.add_argument("--stems", nargs="+", default=None,
+                              metavar="STEM",
+                              help="which stems to save, choose from: "
+                                   "drums bass other vocals (default: all)")
+    output_group.add_argument("--mp3", action="store_true",
+                              help="save stems as MP3 instead of WAV")
+    output_group.add_argument("--float32", action="store_true",
+                              help="save as float32 WAV instead of int16")
+
+    quality_group = parser.add_argument_group("quality")
+    quality_group.add_argument("--shifts", type=int, default=1,
+                               metavar="N",
+                               help="random shifts for better quality, "
+                                    "slower (default: 1)")
+    quality_group.add_argument("--overlap", type=float, default=0.25,
+                               metavar="F",
+                               help="overlap between chunks, 0.0 to 1.0 "
+                                    "(default: 0.25)")
+    quality_group.add_argument("--no-split", action="store_true",
+                               help="process the whole track at once "
+                                    "instead of chunking (uses more memory)")
+
     args = parser.parse_args()
 
     import mlx.core as mx

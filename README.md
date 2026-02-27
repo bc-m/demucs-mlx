@@ -28,42 +28,77 @@ Numerical accuracy: max difference vs PyTorch is **< 1 part per million** (0.8 �
 
 ## Quick start
 
-### Install
-
 ```bash
-# Clone the repo
 git clone https://github.com/andrade0/demucs-mlx.git
 cd demucs-mlx
-
-# Install dependencies
-pip install -r requirements.txt
+make install
 ```
 
-### Separate a song
+That's it. The `make install` command installs Python dependencies and adds `demucs-mlx` to your PATH (`~/.local/bin`).
+
+Now separate any song from anywhere on your Mac:
 
 ```bash
-python separate.py song.mp3
+demucs-mlx song.mp3
 ```
 
-That's it. The first run downloads the pretrained model (~80 MB, cached in `~/.cache/demucs_mlx/`). Output goes to `separated/htdemucs/<song>/`.
+The first run downloads the pretrained model (~80 MB, cached in `~/.cache/demucs_mlx/`). Output goes to `separated/htdemucs/<song>/`.
 
-### More options
+> If you see a PATH warning during install, add this to your `~/.zshrc`:
+> ```bash
+> export PATH="$HOME/.local/bin:$PATH"
+> ```
+
+### Usage
+
+```
+$ demucs-mlx --help
+
+usage: demucs-mlx [-h] [-n NAME] [-o DIR] [--stems STEM [STEM ...]]
+                  [--mp3] [--float32] [--shifts N] [--overlap F]
+                  [--no-split] input
+
+Separate a song into stems (drums, bass, other, vocals)
+using HTDemucs on Apple Silicon with MLX.
+
+positional arguments:
+  input                 input audio file (WAV, MP3, FLAC, OGG, etc.)
+
+model:
+  -n, --name NAME       model name (default: htdemucs)
+
+output:
+  -o, --output DIR      output directory (default: ./separated/<model>/<song>/)
+  --stems STEM [STEM]   stems to save: drums bass other vocals (default: all)
+  --mp3                 save as MP3 instead of WAV
+  --float32             save as float32 WAV instead of int16
+
+quality:
+  --shifts N            random shifts, higher = better but slower (default: 1)
+  --overlap F           chunk overlap, 0.0 to 1.0 (default: 0.25)
+  --no-split            don't chunk, process whole track at once (more memory)
+```
+
+### Examples
 
 ```bash
 # Extract only vocals
-python separate.py song.mp3 --stems vocals
+demucs-mlx song.mp3 --stems vocals
 
 # Extract vocals and drums
-python separate.py song.mp3 --stems vocals drums
+demucs-mlx song.mp3 --stems vocals drums
 
 # Custom output directory
-python separate.py song.mp3 -o my_stems/
+demucs-mlx song.mp3 -o my_stems/
 
-# More shifts = better quality, slower (default: 1)
-python separate.py song.mp3 --shifts 3
+# Better quality (3 shifts), slower
+demucs-mlx song.mp3 --shifts 3
 
-# Save as float32 WAV (default: int16)
-python separate.py song.mp3 --float32
+# Use the fine-tuned model
+demucs-mlx song.mp3 -n htdemucs_ft
+
+# Save as float32 WAV
+demucs-mlx song.mp3 --float32
 ```
 
 ### Use from Python
@@ -148,11 +183,6 @@ Both branches meet at a **Cross-Transformer** bottleneck that lets them exchange
 | `htdemucs_ft` | Fine-tuned on more data | Supported |
 | `htdemucs_6s` | 6-source variant | Untested |
 
-```bash
-# Use the fine-tuned model
-python separate.py song.mp3 -n htdemucs_ft
-```
-
 ## Requirements
 
 - **macOS** with Apple Silicon (M1/M2/M3/M4)
@@ -166,6 +196,7 @@ python separate.py song.mp3 -n htdemucs_ft
 
 ```
 demucs-mlx/
+├── Makefile                 # make install / make uninstall
 ├── separate.py              # CLI entry point
 ├── demucs_mlx/
 │   ├── htdemucs.py          # Main model (hybrid U-Net + transformer)
