@@ -28,21 +28,35 @@ Numerical accuracy: max difference vs PyTorch is **< 1 part per million** (0.8 �
 
 ## Quick start
 
+### 1. Set up a Python environment
+
+Demucs MLX requires **Python 3.10 or later**. We recommend a dedicated conda environment to avoid dependency conflicts (especially with PyTorch):
+
+```bash
+# Create and activate a conda environment
+conda create -n demucs python=3.11 -y
+conda activate demucs
+```
+
+> **No conda?** You can also use `python3 -m venv .venv && source .venv/bin/activate`. Just make sure `python --version` shows 3.10+.
+
+### 2. Install
+
 ```bash
 git clone https://github.com/andrade0/demucs-mlx.git
 cd demucs-mlx
 make install
 ```
 
-That's it. The `make install` command installs Python dependencies and adds `demucs-mlx` to your PATH (`~/.local/bin`).
+This installs all dependencies (MLX, PyTorch CPU, etc.) and puts the `demucs-mlx` command in your PATH (`~/.local/bin`).
 
-Now separate any song from anywhere on your Mac:
+### 3. Separate a song
 
 ```bash
 demucs-mlx song.mp3
 ```
 
-The first run downloads the pretrained model (~80 MB, cached in `~/.cache/demucs_mlx/`). Output goes to `separated/htdemucs/<song>/`.
+The first run downloads the pretrained model (~80 MB, cached in `~/.cache/demucs_mlx/`). Output goes to `separated/htdemucs/<song>/` with 4 WAV files: `drums.wav`, `bass.wav`, `other.wav`, `vocals.wav`.
 
 > If you see a PATH warning during install, add this to your `~/.zshrc`:
 > ```bash
@@ -175,22 +189,58 @@ Both branches meet at a **Cross-Transformer** bottleneck that lets them exchange
 - **Weight loading**: Downloads the original PyTorch checkpoint, converts Conv weights (transpose axes) and splits MultiheadAttention projections, then loads into the MLX model
 - **No training code**: Inference-only, all batch norm / dropout / weight init stripped out
 
-## Models
+## Choosing a model
 
-| Model | Description | Status |
-|-------|-------------|--------|
-| `htdemucs` | Default HTDemucs (4 sources) | Supported |
-| `htdemucs_ft` | Fine-tuned on more data | Supported |
-| `htdemucs_6s` | 6-source variant | Untested |
+Models download automatically on first use (~80 MB each, cached in `~/.cache/demucs_mlx/`). Use the `-n` flag to switch models.
+
+### Available models
+
+| Model | Sources | Description | Status |
+|-------|---------|-------------|--------|
+| `htdemucs` | 4 (drums, bass, other, vocals) | Default HTDemucs — fast and reliable | Supported |
+| `htdemucs_ft` | 4 (drums, bass, other, vocals) | Fine-tuned on more data — better vocal separation | Supported |
+| `htdemucs_6s` | 6 (drums, bass, other, vocals, guitar, piano) | 6-source variant — separates guitar and piano too | Untested |
+
+### Which model should I use?
+
+- **General use?** Start with `htdemucs` (the default). It's the standard model and works well on most music.
+- **Best vocal isolation?** Use `htdemucs_ft` — it's fine-tuned on a larger dataset and produces cleaner vocal separation, especially on complex mixes.
+- **Need guitar or piano stems?** Try `htdemucs_6s` — it outputs 6 separate stems instead of 4. Note: this variant is untested in the MLX port, so results may vary.
+
+```bash
+# Default model (4 stems)
+demucs-mlx song.mp3
+
+# Fine-tuned model (better vocals)
+demucs-mlx song.mp3 -n htdemucs_ft
+
+# 6-source model (adds guitar + piano)
+demucs-mlx song.mp3 -n htdemucs_6s
+```
 
 ## Requirements
 
-- **macOS** with Apple Silicon (M1/M2/M3/M4)
-- **Python 3.10+**
-- Dependencies: `mlx`, `numpy`, `torch` (CPU), `soundfile`, `pyyaml`, `tqdm`
-- Optional: `librosa` (only needed if input sample rate differs from 44.1 kHz)
+- **macOS** with Apple Silicon (M1, M2, M3, or M4)
+- **Python 3.10+** (3.11 recommended)
+- **RAM**: 8 GB minimum, 16 GB+ recommended for long tracks without chunking
+- A conda or virtual environment (recommended to avoid dependency conflicts)
 
-> **Note on PyTorch**: PyTorch is used only for STFT/iSTFT and for loading the pretrained weights. It runs on CPU and adds minimal overhead. A future version may remove this dependency entirely.
+### Dependencies
+
+Installed automatically by `make install`:
+
+| Package | Why |
+|---------|-----|
+| `mlx` >= 0.17 | Apple's ML framework (GPU acceleration) |
+| `torch` | STFT/iSTFT + weight loading (CPU only) |
+| `numpy` | Array operations |
+| `soundfile` | Audio file I/O (WAV, MP3, FLAC, OGG) |
+| `pyyaml` | Model config parsing |
+| `tqdm` | Progress bars |
+
+Optional: `librosa` (only needed if your input audio isn't 44.1 kHz — it handles resampling).
+
+> **Note on PyTorch**: PyTorch is only used for STFT/iSTFT and loading pretrained weights. It runs on CPU — all the heavy computation (convolutions, transformer, U-Net) runs on Apple GPU through MLX. A future version may remove the PyTorch dependency entirely.
 
 ## Project structure
 
