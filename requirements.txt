@@ -1,0 +1,6 @@
+mlx>=0.17
+numpy
+torch
+soundfile
+pyyaml
+tqdm
