@@ -47,7 +47,7 @@ def main():
     output_group.add_argument("--mp3", action="store_true",
                               help="save stems as MP3 instead of WAV")
     output_group.add_argument("--float32", action="store_true",
-                              help="save as float32 WAV instead of int16")
+                              help="save as float32 WAV instead of int16 WAV")
 
     quality_group = parser.add_argument_group("quality")
     quality_group.add_argument("--shifts", type=int, default=1,
@@ -64,11 +64,20 @@ def main():
 
     args = parser.parse_args()
 
+    if args.mp3 and args.float32:
+        parser.error("--float32 is only supported for WAV output")
+
     import mlx.core as mx
     import numpy as np
     import soundfile as sf
     from demucs_mlx.pretrained import load_model
     from demucs_mlx.apply import apply_model
+
+    if args.mp3 and "MP3" not in sf.available_formats():
+        raise RuntimeError(
+            "This soundfile/libsndfile build cannot write MP3 files. "
+            "Install MP3-enabled libsndfile support or omit --mp3."
+        )
 
     # Load audio
     print(f"Loading audio: {args.input}")
@@ -125,9 +134,13 @@ def main():
             continue
         stem = sources_np[i].T  # [T, C]
         ext = "mp3" if args.mp3 else "wav"
+        fmt = "MP3" if args.mp3 else "WAV"
         out_path = os.path.join(out_dir, f"{src_name}.{ext}")
-        subtype = 'FLOAT' if args.float32 else 'PCM_16'
-        sf.write(out_path, stem, sr, subtype=subtype)
+        subtype = (
+            "MPEG_LAYER_III" if args.mp3
+            else ("FLOAT" if args.float32 else "PCM_16")
+        )
+        sf.write(out_path, stem, sr, format=fmt, subtype=subtype)
         print(f"Saved: {out_path}")
 
     print(f"\nDone! Output in: {out_dir}")

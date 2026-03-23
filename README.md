@@ -85,7 +85,7 @@ output:
   -o, --output DIR      output directory (default: ./separated/<model>/<song>/)
   --stems STEM [STEM]   stems to save: drums bass other vocals (default: all)
   --mp3                 save as MP3 instead of WAV
-  --float32             save as float32 WAV instead of int16
+  --float32             save as float32 WAV instead of int16 WAV
 
 quality:
   --shifts N            random shifts, higher = better but slower (default: 1)
@@ -113,6 +113,9 @@ demucs-mlx song.mp3 -n htdemucs_ft
 
 # Save as float32 WAV
 demucs-mlx song.mp3 --float32
+
+# Save stems as MP3
+demucs-mlx song.wav --mp3
 ```
 
 ### Use from Python
