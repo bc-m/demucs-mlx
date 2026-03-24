@@ -9,7 +9,61 @@ Usage:
 
 import argparse
 import os
+import shutil
+import subprocess
+import sys
+import tempfile
 import time
+
+
+def load_audio(path, dtype="float32"):
+    import soundfile as sf
+
+    try:
+        return sf.read(path, dtype=dtype)
+    except Exception as soundfile_error:
+        pass
+
+    # libsndfile can inspect some MP3s but still fail during a full decode.
+    # On macOS, CoreAudio is available by default and is more reliable here.
+    if sys.platform == "darwin":
+        afconvert = shutil.which("afconvert")
+        if afconvert:
+            tmp_path = None
+            try:
+                with tempfile.NamedTemporaryFile(suffix=".wav",
+                                                 delete=False) as tmp:
+                    tmp_path = tmp.name
+                subprocess.run(
+                    [afconvert, "-f", "WAVE", "-d", "LEI16", path, tmp_path],
+                    check=True,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                )
+                return sf.read(tmp_path, dtype=dtype)
+            except Exception:
+                pass
+            finally:
+                if tmp_path and os.path.exists(tmp_path):
+                    os.remove(tmp_path)
+
+    try:
+        import librosa
+
+        wav, sr = librosa.load(path, sr=None, mono=False, dtype=dtype)
+        if wav.ndim == 1:
+            wav = wav[:, None]
+        else:
+            wav = wav.T
+        return wav, sr
+    except Exception as fallback_error:
+        raise RuntimeError(
+            f"Failed to decode audio file {path!r} with soundfile "
+            f"({soundfile_error}) and fallback decoder ({fallback_error}). "
+            "If this is an MP3, try reinstalling in a Python 3.10+ "
+            "environment or convert the file to WAV first."
+        ) from soundfile_error
 
 
 def main():
@@ -72,7 +126,7 @@ def main():
 
     # Load audio
     print(f"Loading audio: {args.input}")
-    wav, sr = sf.read(args.input, dtype='float32')
+    wav, sr = load_audio(args.input, dtype="float32")
     if wav.ndim == 1:
         wav = wav[:, None]
     # wav: [T, C] → [1, C, T]
