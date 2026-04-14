@@ -13,9 +13,7 @@ venv/
 env/
 
 separated/
-*.wav
-*.mp3
-*.flac
+input/
 
 .cache/
 *.th
